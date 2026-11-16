@@ -165,8 +165,10 @@ const Q = {
 /* ---------- 상태 ---------- */
 let party, boss, cur, turn, menuState = null, advance = null, over = false, attacked = false;
 let hardMode = false;
+const LS = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+let order = (() => { try { const o = JSON.parse(LS.get('raidOrder')); if (o.length === CHARS.length && CHARS.every(c => o.includes(c.id))) return o; } catch (e) {} return CHARS.map(c => c.id); })();   // 출전 순서
 function reset() {
-  party = CHARS.map(c => ({ ...c, hp: c.max, conf: 0, bleed: 0, boost: false }));
+  party = order.map(id => CHARS.find(c => c.id === id)).map(c => ({ ...c, hp: c.max, conf: 0, bleed: 0, boost: false }));
   const hp = hardMode ? 800 : 650;
   boss = { hp, max: hp, atkUp: 0, weak: 0, vuln: 0, stun: 0, charge: false, phase: 1, cm: 190 };
   cur = 0; turn = 1; over = false; bossForm = 0;
@@ -229,7 +231,10 @@ function menu(q, opts, back) {
   });
 }
 addEventListener('keydown', e => {
-  const k = e.key.toLowerCase(); if (!$('#title').hidden || !$('#result').hidden) { if (k === 'z' || k === 'enter') ($('#title').hidden ? $('#btnRetry') : $('#btnStart')).click(); return; }
+  const k = e.key.toLowerCase();
+  if (!$('#rank').hidden) { if (k === 'x' || k === 'escape' || k === 'enter') $('#btnRankClose').click(); return; }
+  if (e.target.id === 'nick') { if (k === 'enter') $('#btnStart').click(); return; }
+  if (!$('#title').hidden || !$('#result').hidden) { if (k === 'z' || k === 'enter') ($('#title').hidden ? $('#btnRetry') : $('#btnStart')).click(); return; }
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (menuState) {
     if (k === 'arrowleft') menuState.move(-1, 0); else if (k === 'arrowright') menuState.move(1, 0);
@@ -392,18 +397,74 @@ async function finish(win) {
   const left = alive().length;
   $('#resT').textContent = (hardMode ? '[하드] ' : '') + (win ? '토벌 성공!' : '토벌 실패…');
   $('#resS').textContent = win ? `${turn}턴 만에 정상훈을 때려잡았다 · 생존 ${left}/${party.length} · 정상훈 최종 키 ${boss.cm}cm` : `정상훈의 남은 HP ${boss.hp}/${boss.max} · ${turn}턴 버팀`;
-  record = `[정상훈 레이드] ${$('#resT').textContent} ${$('#resS').textContent}`;
-  $('#result').hidden = false;
+  record = `[정상훈 레이드] ${nick()} · ${$('#resT').textContent} ${$('#resS').textContent}`;
+  $('#resR').textContent = ''; $('#result').hidden = false;
+  if (win) submitScore({ nick: nick(), turns: turn, hard: hardMode, alive: left, cm: boss.cm });
 }
 
 /* ---------- 시작 ---------- */
+// 타이틀: 닉네임 + 출전 순서 고르기 (누른 순서대로 1, 2, 3, 4)
+const nick = () => $('#nick').value.trim().slice(0, 12);
+$('#nick').value = LS.get('raidNick') || '';
+let picking = order.slice();
+function drawOrder() {
+  $('#heroes').querySelectorAll('.hero').forEach(b => {
+    const i = picking.indexOf(b.dataset.hero); b.classList.toggle('off', i < 0); b.querySelector('b').textContent = i + 1; b.style.order = i < 0 ? 9 : i;
+  });
+}
 CHARS.forEach(c => {
   const cv = document.createElement('canvas'); cv.width = cv.height = 32; drawChar(cv, c.id);
-  const im = new Image(); im.dataset.id = c.id; im.src = hasPose[c.id] ? `assets/chars/${c.id}.png` : cv.toDataURL(); $('#heroes').appendChild(im);
+  const b = document.createElement('button'); b.className = 'hero'; b.dataset.hero = c.id;
+  const im = new Image(); im.dataset.id = c.id; im.src = hasPose[c.id] ? `assets/chars/${c.id}.png` : cv.toDataURL();
+  b.append(document.createElement('b'), im, Object.assign(document.createElement('small'), { textContent: c.name }));
+  b.onclick = () => {   // 다 정해진 상태에서 누르면 그 캐릭터부터 다시 고른다
+    if (picking.length === CHARS.length) picking = [];
+    if (!picking.includes(c.id)) picking.push(c.id);
+    if (picking.length === CHARS.length - 1) picking.push(CHARS.find(x => !picking.includes(x.id)).id);
+    if (picking.length === CHARS.length) { order = picking.slice(); LS.set('raidOrder', JSON.stringify(order)); reset(); }
+    sfx.ok(); drawOrder();
+  };
+  $('#heroes').appendChild(b);
 });
+drawOrder();
 reset();
-function start(hard) { if (typeof hard === 'boolean') hardMode = hard; if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); $('#title').hidden = true; $('#result').hidden = true; battle(); }
+function start(hard) {
+  if (!nick()) { const n = $('#nick'); $('#result').hidden = true; $('#title').hidden = false; n.classList.remove('need'); void n.offsetWidth; n.classList.add('need'); n.focus(); return; }
+  LS.set('raidNick', nick()); if (picking.length < CHARS.length) { picking = order.slice(); drawOrder(); }
+  if (typeof hard === 'boolean') hardMode = hard; if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); $('#title').hidden = true; $('#result').hidden = true; battle(); }
 $('#btnStart').onclick = () => start(false); $('#btnHard').onclick = () => start(true); $('#btnRetry').onclick = () => start();
 $('#btnTitle').onclick = () => { $('#result').hidden = true; $('#title').hidden = false; };
 $('#btnCopy').onclick = () => navigator.clipboard.writeText(record).then(() => { $('#btnCopy').textContent = '복사됨!'; setTimeout(() => $('#btnCopy').textContent = '기록 복사', 1200); });
 $('#btnSnd').onclick = e => { e.stopPropagation(); sndOn = !sndOn; $('#btnSnd').textContent = sndOn ? '♪ 켜짐' : '♪ 꺼짐'; };
+
+/* ---------- 랭킹 (Supabase) ---------- */
+// 공개용(publishable) 키라 코드에 넣어도 된다. 표에는 읽기와 추가만 허용되어 있다.
+const SB = 'https://qjvpktgcptzncikfpjmf.supabase.co/rest/v1/scores', SBK = 'sb_publishable_kL11bpE6JVgoOLFrUEnaAg_tJg0s9KC';
+const sbHead = { apikey: SBK, Authorization: 'Bearer ' + SBK, 'Content-Type': 'application/json' };
+async function fetchRank(hard) {   // 턴 수가 적은 순, 닉네임마다 최고 기록 하나만
+  const r = await fetch(`${SB}?select=nick,turns,alive,cm,created_at&hard=eq.${hard}&order=turns.asc,created_at.asc&limit=300`, { headers: sbHead });
+  if (!r.ok) throw new Error(r.status);
+  const seen = new Set(); return (await r.json()).filter(x => !seen.has(x.nick) && seen.add(x.nick));
+}
+async function submitScore(s) {
+  try {
+    const r = await fetch(SB, { method: 'POST', headers: { ...sbHead, Prefer: 'return=minimal' }, body: JSON.stringify(s) });
+    if (!r.ok) throw new Error(r.status);
+    const list = await fetchRank(s.hard), i = list.findIndex(x => x.nick === s.nick);
+    $('#resR').textContent = `랭킹 등록 완료! ${s.hard ? '하드' : '일반'} ${i + 1}위 (최고 기록 ${list[i].turns}턴)`;
+  } catch (e) { $('#resR').textContent = '랭킹 등록에 실패했습니다 (인터넷 연결 확인)'; }
+}
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function showRank(hard) {
+  $('#rank').hidden = false; $('#tabN').classList.toggle('on', !hard); $('#tabH').classList.toggle('on', hard);
+  $('#rankList').textContent = '불러오는 중…';
+  try {
+    const list = (await fetchRank(hard)).slice(0, 30);
+    $('#rankList').innerHTML = list.length ? '<table><tr><th>순위</th><th>닉네임</th><th>턴</th><th>생존</th><th>정상훈 키</th></tr>' +
+      list.map((x, i) => `<tr class="${x.nick === nick() ? 'me' : ''}"><td>${i + 1}</td><td>${esc(x.nick)}</td><td>${x.turns}턴</td><td>${x.alive}명</td><td>${x.cm}cm</td></tr>`).join('') + '</table>'
+      : '아직 기록이 없습니다. 첫 토벌의 주인공이 되어 보세요!';
+  } catch (e) { $('#rankList').textContent = '랭킹을 불러오지 못했습니다.'; }
+}
+$('#btnRank').onclick = () => showRank(false); $('#btnRank2').onclick = () => showRank(hardMode);
+$('#tabN').onclick = () => showRank(false); $('#tabH').onclick = () => showRank(true);
+$('#btnRankClose').onclick = () => { $('#rank').hidden = true; };

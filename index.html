@@ -82,7 +82,20 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .big{background:var(--gold);color:#1a1400;border:0;padding:12px 28px;font-size:18px;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
 .ghost{background:#1d2850;border:2px solid var(--line);padding:8px 16px}
 .tiny{font-size:11px;opacity:.6;max-width:520px}
-#heroes img{height:92px;image-rendering:pixelated;margin:0 6px;vertical-align:bottom}
+#heroes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.hero{position:relative;background:#1d2850;border:2px solid var(--line);padding:6px 8px 4px;min-width:84px}
+.hero img{height:72px;image-rendering:pixelated;display:block;margin:0 auto}
+.hero small{display:block;font-size:12px;margin-top:2px}
+.hero b{position:absolute;left:-6px;top:-8px;width:24px;height:24px;line-height:24px;border-radius:50%;background:var(--gold);color:#1a1400;font-weight:normal}
+.hero.off{opacity:.45} .hero.off b{visibility:hidden}
+#nick{font-family:inherit;font-size:16px;padding:8px 10px;width:220px;text-align:center;background:#0d1430;color:#fff;border:2px solid var(--line)}
+#nick.need{border-color:var(--red);animation:shake .35s}
+#rank{z-index:8;justify-content:flex-start;overflow:auto;background:#060916} #rank h2{color:var(--gold);margin:8px 0 0}
+.tab.on{border-color:var(--gold);background:#2b3a70}
+#rankList{width:100%;max-width:520px;font-size:14px} #rankList table{width:100%;border-collapse:collapse}
+#rankList td,#rankList th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center} #rankList td:nth-child(2){text-align:left}
+#rankList tr.me td{color:var(--gold)}
+#resR{color:var(--gold);min-height:1.2em}
 .row2{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .big.hard{background:var(--red);color:#fff}
 #tools{position:absolute;right:12px;top:12px;z-index:6;display:flex;gap:4px}
@@ -116,15 +129,25 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   <div class="overlay" id="title">
     <h1>정상훈 레이드</h1>
     <p>치이카와 토벌대, 출동!</p>
+    <input id="nick" maxlength="12" placeholder="닉네임 (최대 12자)" autocomplete="off">
+    <p class="tiny">출전 순서: 캐릭터를 내보낼 순서대로 누르세요. 1번이 선봉입니다.</p>
     <div id="heroes"></div>
     <div class="row2"><button class="big" id="btnStart">토벌 시작 ▶</button><button class="big hard" id="btnHard">하드모드 🔥</button></div>
+    <button class="ghost" id="btnRank">🏆 랭킹 보기</button>
     <p class="tiny">조작: 방향키 이동 · Z/Enter 결정 · X 뒤로 · 터치도 됩니다</p>
     <p class="tiny">친구들끼리 즐기는 비상업 팬게임입니다. 치이카와 원작 및 권리자와 아무 관련이 없습니다.</p>
   </div>
   <div class="overlay" id="result" hidden>
     <h1 id="resT"></h1><p id="resS"></p>
     <button class="big" id="btnRetry">다시 도전 ▶</button>
-    <div class="row2"><button class="ghost" id="btnCopy">기록 복사</button><button class="ghost" id="btnTitle">타이틀로</button></div>
+    <p id="resR"></p>
+    <div class="row2"><button class="ghost" id="btnCopy">기록 복사</button><button class="ghost" id="btnRank2">🏆 랭킹</button><button class="ghost" id="btnTitle">타이틀로</button></div>
+  </div>
+  <div class="overlay" id="rank" hidden>
+    <h2>🏆 토벌 랭킹</h2>
+    <div class="row2"><button class="ghost tab" id="tabN">일반</button><button class="ghost tab" id="tabH">하드 🔥</button></div>
+    <div id="rankList"></div>
+    <button class="ghost" id="btnRankClose">닫기</button>
   </div>
 </div>
 <script src="game.js"></script>
