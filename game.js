@@ -146,7 +146,7 @@ const CHARS = [
     { n: '우라!', d: '위력 32 · 급소 잘 남', pow: 32, crit: 0.3, cry: '우라!!' },
     { n: '야하! 연타', d: '위력 12 × 2~4회', pow: 12, multi: [2, 4], cry: '야하! 야하!' },
     { n: '푸루루루', d: '3턴간 보스가 받는 피해 +40%', vuln: 3, cry: '푸루루루루루!' } ] },
-  // 모몽가: 정상훈이 극도로 싫어해서 등장하자마자 흑염룡에게 당한다. 대신 정상훈이 3턴 동안 빌빌거린다 (희생 카드)
+  // 모몽가: 정상훈이 극도로 싫어해서 등장하자마자 흑염룡에게 당한다. 대신 정상훈이 3턴 동안 빌빌거린다 = 주는 대미지 절반, 받는 대미지 1.5배 (희생 카드)
   { id: 'momonga', name: '모몽가', max: 100, hated: true, moves: [{ n: '귀여운 척', d: '위력 20', pow: 20, cry: '나를 봐!' }] },
 ];
 const Q = {
@@ -242,14 +242,14 @@ $('#msg').onclick = $('#stage').onclick = () => advance && advance();
 /* ---------- 전투 ---------- */
 async function hitBoss(base, critRate = 0.1) {
   const p = me(), crit = Math.random() < critRate;
-  let d = base * (p.boost ? 1.5 : 1) * (boss.vuln ? 1.4 : 1) * (crit ? 1.5 : 1) * (0.9 + Math.random() * 0.2);
+  let d = base * (p.boost ? 1.5 : 1) * (boss.vuln ? 1.4 : 1) * (boss.stun ? 1.5 : 1) * (crit ? 1.5 : 1) * (0.9 + Math.random() * 0.2);
   d = Math.max(1, Math.round(d)); boss.hp = Math.max(0, boss.hp - d);
   setPc('attack'); fx($('#pc'), 'lunge'); await sleep(120); fx($('#boss'), 'blink'); fx($('#stage'), 'shake'); crit ? sfx.crit() : sfx.hit();
   floatNum('-' + d, true, crit ? '#ffd23f' : '#fff'); render(); await sleep(450); setPc();
   if (crit) await say('급소에 맞았다!');
 }
 async function hitMe(base, label) {
-  const p = me(), mult = (boss.atkUp ? 1.5 : 1) * (boss.weak ? 0.7 : 1) * [1, 1, 1.15, 1.3][boss.phase] * (hardMode ? 1.3 : 1);
+  const p = me(), mult = (boss.atkUp ? 1.5 : 1) * (boss.weak ? 0.7 : 1) * [1, 1, 1.15, 1.3][boss.phase] * (hardMode ? 1.3 : 1) * (boss.stun ? 0.5 : 1);
   const d = Math.max(1, Math.round(base * mult * (0.9 + Math.random() * 0.2))); p.hp = Math.max(0, p.hp - d);
   fx($('#boss'), 'blunge'); await sleep(120); fx($('#pc'), 'blink'); fx($('#stage'), 'shake'); sfx.hit();
   floatNum('-' + d, false, '#ff8a8a'); render(); await sleep(450);
@@ -289,8 +289,12 @@ async function checkPhase() {
   }
 }
 async function bossTurn() {
+  if (boss.stun) await say(pick(['정상훈은 숨을 헐떡이며 빌빌거리고 있다…', '정상훈 「허억… 허억… 모몽가…」', '정상훈의 다리가 후들거린다…']));
+  await bossAct();
+  if (boss.stun) { boss.stun--; render(); if (!boss.stun) await say('정상훈이 기운을 되찾았다!'); }
+}
+async function bossAct() {
   const p = me();
-  if (boss.stun) { boss.stun--; fx($('#boss'), 'blink'); render(); await say(pick(['정상훈은 숨을 헐떡이며 빌빌거리고 있다…', '정상훈은 격노의 후유증으로 움직이지 못한다…', '정상훈 「허억… 허억… 모몽가…」'])); return; }
   if (boss.charge) {
     boss.charge = false; $('#aura').classList.add('on'); sfx.dark(); await say(`정상훈 「${pick(Q.fire)}」`);
     flash(); await hitMe(40, '흑염룡이 덮쳤다!'); $('#aura').classList.remove('on'); return;
@@ -337,8 +341,8 @@ async function momongaRage() {
   d.remove(); flash(); fx($('#stage'), 'shake'); fx($('#pc'), 'blink'); sfx.hit(); floatNum('-999', false, '#c77dff');
   p.hp = 0; render(); $('#aura').classList.remove('on');
   await say('흑염룡이 모몽가를 덮쳤다!');
-  boss.stun = 3; boss.charge = false; render();
-  await say('정상훈은 너무 격노한 나머지 기운이 빠졌다! 3턴 동안 빌빌거린다!');
+  boss.stun = 3; render();
+  await say('정상훈은 너무 격노한 나머지 기운이 빠졌다!'); await say('3턴 동안 정상훈의 공격과 방어가 크게 떨어진다!');
 }
 async function chooseSwap(forced) {
   const i = await menu(forced ? '누구를 내보낼까?' : '누구와 교체할까?', party.map((p, j) => ({ n: p.name, d: p.hated ? `HP ${p.hp}/${p.max} · 정상훈이 싫어함` : `HP ${p.hp}/${p.max}`, off: p.hp <= 0 || j === cur })), !forced);
