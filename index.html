@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>정상훈 레이드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css">
+<style>
+:root{--bg:#0a1022;--panel:#151d3a;--line:#2c3866;--gold:#f2c94c;--red:#e5484d;--cream:#f6efd9;--ink:#23213a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:#e8ecff;font-family:Galmuri11,system-ui,sans-serif}
+body{display:flex;justify-content:center;align-items:flex-start}
+#app{width:100%;max-width:760px;padding:8px;position:relative;user-select:none}
+canvas{image-rendering:pixelated}
+button{font-family:inherit;color:inherit;cursor:pointer}
+
+#stage{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border:3px solid var(--line);
+  background:#223 url(assets/bg_pixel.png) center/cover no-repeat;image-rendering:pixelated}
+#stage::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,0);transition:background 1s;pointer-events:none}
+#stage.rage::before{background:rgba(170,20,30,.38)}
+#stage.awake::before{background:rgba(25,0,45,.68)}
+.pad{position:absolute;height:9%;border-radius:50%;background:rgba(0,0,0,.28)}
+#padB{right:6%;top:50%;width:38%}
+#padP{left:6%;bottom:4%;width:34%}
+#boss{position:absolute;right:9%;bottom:20%;height:52%;transform-origin:50% 100%;transition:transform .6s;image-rendering:pixelated;
+  filter:drop-shadow(0 6px 4px rgba(0,0,0,.45))}
+#boss.crimson{filter:sepia(1) saturate(7) hue-rotate(-52deg) brightness(.85) contrast(1.25) drop-shadow(0 0 10px #ff1020) drop-shadow(0 0 22px #c00010);animation:throb .7s infinite alternate}
+@keyframes throb{to{filter:sepia(1) saturate(9) hue-rotate(-52deg) brightness(1.05) contrast(1.3) drop-shadow(0 0 16px #ff3040) drop-shadow(0 0 34px #ff0018)}}
+#stage.blood::before{background:rgba(110,0,0,.62)}
+#pc{position:absolute;left:8%;bottom:4%;height:38%;image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.4))}
+.info{position:absolute;background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:6px;
+  padding:5px 8px;width:42%;font-size:clamp(10px,2.3vw,15px);box-shadow:3px 3px 0 rgba(0,0,0,.35)}
+#infoB{left:3%;top:5%}
+#infoP{right:2%;bottom:2%}
+.info .row{display:flex;justify-content:space-between;gap:6px}
+.bar{height:8px;background:#3a3a4a;border:2px solid var(--ink);border-radius:4px;margin:3px 0;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:#39c06b;transition:width .7s,background .4s}
+.badges{min-height:1.2em;display:flex;flex-wrap:wrap;gap:3px}
+.badges b{font-weight:normal;font-size:.8em;padding:0 4px;border-radius:3px;background:var(--ink);color:#fff}
+.badges b.bad{background:var(--red)} .badges b.good{background:#2f8f5b}
+#turn{position:absolute;right:6px;top:4px;font-size:12px;background:rgba(0,0,0,.5);padding:1px 6px}
+#aura{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(circle at 72% 32%,rgba(140,40,255,.0) 8%,rgba(60,0,110,.85) 45%,#000 100%)}
+#aura.on{opacity:1;animation:pulse .5s infinite alternate}
+#flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:#fff}
+#flash.on{animation:flash .35s}
+#flash.red{background:#ff1030}
+.dmg{position:absolute;font-size:clamp(16px,4vw,28px);color:#fff;text-shadow:2px 2px 0 #000;animation:rise 1s forwards;pointer-events:none}
+.shake{animation:shake .35s}
+.blink{animation:blink .12s 4}
+.lunge{animation:lunge .25s}
+.blunge{animation:blunge .25s}
+@keyframes pulse{to{filter:hue-rotate(40deg) brightness(1.4)}}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+@keyframes rise{to{transform:translateY(-46px);opacity:0}}
+@keyframes shake{20%{transform:translate(-7px,3px)}40%{transform:translate(6px,-4px)}60%{transform:translate(-5px,-2px)}80%{transform:translate(4px,3px)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes lunge{50%{translate:18% -14%}}
+@keyframes blunge{50%{translate:-22% 18%}}
+
+#bottom{display:grid;grid-template-columns:1.1fr 1fr;gap:8px;margin-top:8px}
+#msg,#cmd{background:var(--panel);border:3px solid var(--line);min-height:112px;padding:10px;position:relative}
+#msg{font-size:clamp(13px,2.8vw,17px);line-height:1.5;cursor:pointer;white-space:pre-wrap}
+#more{position:absolute;right:10px;bottom:6px;color:var(--gold);visibility:hidden;animation:blink .8s infinite}
+#cmd .q{font-size:12px;opacity:.75;margin-bottom:6px}
+#menu{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#menu button{background:#1d2850;border:2px solid var(--line);padding:8px 6px;text-align:left;font-size:clamp(12px,2.6vw,15px);min-height:44px}
+#menu button small{display:block;opacity:.7;font-size:.78em}
+#menu button.sel{border-color:var(--gold);background:#2b3a70}
+#menu button:disabled{opacity:.35}
+#menu button.back{grid-column:1/-1;min-height:32px;text-align:center}
+@media(max-width:560px){#bottom{grid-template-columns:1fr}#msg{min-height:84px}}
+
+.overlay{position:absolute;inset:0;background:rgba(6,9,22,.94);z-index:5;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:12px;padding:16px}
+.overlay h1{font-size:clamp(30px,9vw,60px);margin:0;color:var(--gold);text-shadow:4px 4px 0 #7a4a00}
+.overlay p{margin:0;line-height:1.6}
+.big{background:var(--gold);color:#1a1400;border:0;padding:12px 28px;font-size:18px;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+.ghost{background:#1d2850;border:2px solid var(--line);padding:8px 16px}
+.tiny{font-size:11px;opacity:.6;max-width:520px}
+#heroes img{height:92px;image-rendering:pixelated;margin:0 6px;vertical-align:bottom}
+.row2{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.big.hard{background:var(--red);color:#fff}
+#tools{position:absolute;right:12px;top:12px;z-index:6;display:flex;gap:4px}
+#tools button{background:rgba(0,0,0,.55);border:2px solid var(--line);font-size:12px;padding:3px 7px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="tools"><button id="btnSnd">♪ 켜짐</button></div>
+  <div id="stage">
+    
+    <img id="boss" alt="">
+    <img id="pc" alt="">
+    <div class="info" id="infoB">
+      <div class="row"><span>정상훈 <span id="cm"></span></span><span>Lv99</span></div>
+      <div class="bar"><i id="hpB"></i></div><div class="badges" id="bdB"></div>
+    </div>
+    <div class="info" id="infoP">
+      <div class="row"><span id="nmP"></span><span id="ptP"></span></div>
+      <div class="bar"><i id="hpP"></i></div>
+      <div class="row"><span class="badges" id="bdP"></span><span id="numP"></span></div>
+    </div>
+    <div id="aura"></div><div id="flash"></div><div id="turn"></div>
+  </div>
+  <div id="bottom">
+    <div id="msg"><span id="txt"></span><span id="more">▼</span></div>
+    <div id="cmd"><div class="q" id="q"></div><div id="menu"></div></div>
+  </div>
+
+  <div class="overlay" id="title">
+    <h1>정상훈 레이드</h1>
+    <p>치이카와 토벌대, 출동!</p>
+    <div id="heroes"></div>
+    <div class="row2"><button class="big" id="btnStart">토벌 시작 ▶</button><button class="big hard" id="btnHard">하드모드 🔥</button></div>
+    <p class="tiny">조작: 방향키 이동 · Z/Enter 결정 · X 뒤로 · 터치도 됩니다</p>
+    <p class="tiny">친구들끼리 즐기는 비상업 팬게임입니다. 치이카와 원작 및 권리자와 아무 관련이 없습니다.</p>
+  </div>
+  <div class="overlay" id="result" hidden>
+    <h1 id="resT"></h1><p id="resS"></p>
+    <button class="big" id="btnRetry">다시 도전 ▶</button>
+    <div class="row2"><button class="ghost" id="btnCopy">기록 복사</button><button class="ghost" id="btnTitle">타이틀로</button></div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
