@@ -366,7 +366,13 @@ async function enterHard(mid) {   // mid: 일반 모드 전투 도중에 도발�
 async function battle() {
   reset(); bgm(false);
   await say('앗! 야생의 정상훈이 나타났다!'); await say(`가랏, ${me().name}!`);
+  if (me().hated) await momongaRage();   // 선봉으로 나와도 격노한다
   if (hardMode) await enterHard(false);
+  while (me().hp <= 0) {
+    sfx.down(); await say(`${me().name}는(은) 쓰러졌다!`);
+    if (!alive().length) return finish(false);
+    await swapTo(await chooseSwap(true), true);
+  }
   while (!over) {
     // 플레이어 턴
     let acted = false;
