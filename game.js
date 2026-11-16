@@ -74,10 +74,10 @@ function drawBoss() { $('#boss').src = BOSS_IMG[bossForm]; }
 
 // 캐릭터 모션: assets/chars/{id}_{idle|attack}.webp 가 있으면 사용, 없으면 직접 그린 픽셀 스프라이트
 const hasPose = {};
-['chiikawa', 'hachiware', 'usagi'].forEach(id => {   // 정지 그림 assets/chars/{id}.png 가 있으면 최우선
+['chiikawa', 'hachiware', 'usagi', 'momonga'].forEach(id => {   // 정지 그림 assets/chars/{id}.png 가 있으면 최우선
   const i = new Image(); i.onload = () => { hasPose[id] = true; if (party && me().id === id) setPc(); const t = document.querySelector(`#heroes [data-id=${id}]`); if (t) t.src = i.src; }; i.src = `assets/chars/${id}.png`;
 });
-['chiikawa', 'hachiware', 'usagi'].forEach(id => ['idle', 'attack'].forEach(pose => {
+['chiikawa', 'hachiware', 'usagi', 'momonga'].forEach(id => ['idle', 'attack'].forEach(pose => {
   const i = new Image(); i.onload = () => { hasPose[`${id}_${pose}`] = true; if (party && me().id === id) setPc(); const t = document.querySelector(`#heroes [data-id=${id}]`); if (t && pose === 'idle' && !hasPose[id]) t.src = i.src; }; i.src = `assets/chars/${id}_${pose}.webp`;
 }));
 // 동영상 모션: 로딩할 때 프레임을 뽑아, 테두리에서 이어진 배경색을 지우고 가운데 캐릭터만 남긴다
@@ -146,6 +146,8 @@ const CHARS = [
     { n: '우라!', d: '위력 32 · 급소 잘 남', pow: 32, crit: 0.3, cry: '우라!!' },
     { n: '야하! 연타', d: '위력 12 × 2~4회', pow: 12, multi: [2, 4], cry: '야하! 야하!' },
     { n: '푸루루루', d: '3턴간 보스가 받는 피해 +40%', vuln: 3, cry: '푸루루루루루!' } ] },
+  // 모몽가: 정상훈이 극도로 싫어해서 등장하자마자 흑염룡에게 당한다. 대신 정상훈이 3턴 동안 빌빌거린다 (희생 카드)
+  { id: 'momonga', name: '모몽가', max: 100, hated: true, moves: [{ n: '귀여운 척', d: '위력 20', pow: 20, cry: '나를 봐!' }] },
 ];
 const Q = {
   nonsense: [
@@ -166,7 +168,7 @@ let hardMode = false;
 function reset() {
   party = CHARS.map(c => ({ ...c, hp: c.max, conf: 0, bleed: 0, boost: false }));
   const hp = hardMode ? 800 : 650;
-  boss = { hp, max: hp, atkUp: 0, weak: 0, vuln: 0, charge: false, phase: 1, cm: 190 };
+  boss = { hp, max: hp, atkUp: 0, weak: 0, vuln: 0, stun: 0, charge: false, phase: 1, cm: 190 };
   cur = 0; turn = 1; over = false; bossForm = 0;
   $('#stage').className = ''; $('#boss').className = ''; $('#aura').className = ''; drawBoss(); setPc(); render();
 }
@@ -186,6 +188,7 @@ function render() {
   if (boss.phase === 2) b.push('<b class="bad">광폭화</b>'); if (boss.phase === 3) b.push('<b class="bad">각성</b>');
   if (boss.atkUp) b.push(`<b class="bad">공격↑${boss.atkUp}</b>`); if (boss.charge) b.push('<b class="bad">흑염룡 준비</b>');
   if (boss.weak) b.push(`<b class="good">공격↓${boss.weak}</b>`); if (boss.vuln) b.push(`<b class="good">빈틈${boss.vuln}</b>`);
+  if (boss.stun) b.push(`<b class="good">빌빌${boss.stun}</b>`);
   $('#bdB').innerHTML = b.join('');
   $('#bdP').innerHTML = (p.conf ? '<b class="bad">혼란</b>' : '') + (p.bleed ? '<b class="bad">출혈</b>' : '') + (p.boost ? '<b class="good">응원</b>' : '');
   $('#boss').style.transform = `scale(${Math.min(1.4, 1 + (boss.cm - 190) * 0.02)})`;
@@ -287,6 +290,7 @@ async function checkPhase() {
 }
 async function bossTurn() {
   const p = me();
+  if (boss.stun) { boss.stun--; fx($('#boss'), 'blink'); render(); await say(pick(['정상훈은 숨을 헐떡이며 빌빌거리고 있다…', '정상훈은 격노의 후유증으로 움직이지 못한다…', '정상훈 「허억… 허억… 모몽가…」'])); return; }
   if (boss.charge) {
     boss.charge = false; $('#aura').classList.add('on'); sfx.dark(); await say(`정상훈 「${pick(Q.fire)}」`);
     flash(); await hitMe(40, '흑염룡이 덮쳤다!'); $('#aura').classList.remove('on'); return;
@@ -321,9 +325,23 @@ async function endTurn() {
 async function swapTo(i, forced) {
   if (!forced) await say(`${me().name}, 돌아와!`);
   cur = i; setPc(); render(); sfx.ok(); await say(`가랏, ${me().name}!`);
+  if (me().hated) await momongaRage();
+}
+async function momongaRage() {
+  const p = me();
+  await say('정상훈 「……모몽가?」');
+  flash(true); fx($('#stage'), 'shake'); sfx.crit(); fx($('#boss'), 'blunge');
+  await say('정상훈은 모몽가를 보자마자 격노했다!!'); await say('정상훈 「흑염룡!!! 저것부터 치워!!!」');
+  $('#aura').classList.add('on'); sfx.dark();
+  const d = document.createElement('img'); d.src = BOSS_IMG[1]; d.id = 'dragon'; $('#stage').appendChild(d); await sleep(850);   // 흑염룡이 보스 쪽에서 모몽가에게 날아든다
+  d.remove(); flash(); fx($('#stage'), 'shake'); fx($('#pc'), 'blink'); sfx.hit(); floatNum('-999', false, '#c77dff');
+  p.hp = 0; render(); $('#aura').classList.remove('on');
+  await say('흑염룡이 모몽가를 덮쳤다!');
+  boss.stun = 3; boss.charge = false; render();
+  await say('정상훈은 너무 격노한 나머지 기운이 빠졌다! 3턴 동안 빌빌거린다!');
 }
 async function chooseSwap(forced) {
-  const i = await menu(forced ? '누구를 내보낼까?' : '누구와 교체할까?', party.map((p, j) => ({ n: p.name, d: `HP ${p.hp}/${p.max}`, off: p.hp <= 0 || j === cur })), !forced);
+  const i = await menu(forced ? '누구를 내보낼까?' : '누구와 교체할까?', party.map((p, j) => ({ n: p.name, d: p.hated ? `HP ${p.hp}/${p.max} · 정상훈이 싫어함` : `HP ${p.hp}/${p.max}`, off: p.hp <= 0 || j === cur })), !forced);
   return i;
 }
 async function enterHard(mid) {   // mid: 일반 모드 전투 도중에 도발해서 넘어온 경우
@@ -355,7 +373,7 @@ async function battle() {
     await checkPhase();
     if (me().hp > 0) await bossTurn();
     await endTurn();
-    if (me().hp <= 0) {
+    while (me().hp <= 0) {
       sfx.down(); await say(`${me().name}는(은) 쓰러졌다!`);
       if (!alive().length) return finish(false);
       await swapTo(await chooseSwap(true), true);
@@ -369,7 +387,7 @@ async function finish(win) {
   else await say('토벌대는 눈앞이 캄캄해졌다…');
   const left = alive().length;
   $('#resT').textContent = (hardMode ? '[하드] ' : '') + (win ? '토벌 성공!' : '토벌 실패…');
-  $('#resS').textContent = win ? `${turn}턴 만에 정상훈을 때려잡았다 · 생존 ${left}/3 · 정상훈 최종 키 ${boss.cm}cm` : `정상훈의 남은 HP ${boss.hp}/${boss.max} · ${turn}턴 버팀`;
+  $('#resS').textContent = win ? `${turn}턴 만에 정상훈을 때려잡았다 · 생존 ${left}/${party.length} · 정상훈 최종 키 ${boss.cm}cm` : `정상훈의 남은 HP ${boss.hp}/${boss.max} · ${turn}턴 버팀`;
   record = `[정상훈 레이드] ${$('#resT').textContent} ${$('#resS').textContent}`;
   $('#result').hidden = false;
 }

@@ -28,6 +28,9 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #boss.crimson{filter:sepia(1) saturate(7) hue-rotate(-52deg) brightness(.85) contrast(1.25) drop-shadow(0 0 10px #ff1020) drop-shadow(0 0 22px #c00010);animation:throb .7s infinite alternate}
 @keyframes throb{to{filter:sepia(1) saturate(9) hue-rotate(-52deg) brightness(1.05) contrast(1.3) drop-shadow(0 0 16px #ff3040) drop-shadow(0 0 34px #ff0018)}}
 #stage.blood::before{background:rgba(110,0,0,.62)}
+#dragon{position:absolute;right:10%;top:6%;height:60%;image-rendering:pixelated;pointer-events:none;z-index:3;
+  filter:brightness(.25) saturate(3) drop-shadow(0 0 14px #a020ff);animation:swoop .85s cubic-bezier(.5,0,.9,.4) forwards}
+@keyframes swoop{0%{transform:scale(.6) rotate(0);opacity:.2}35%{transform:translate(-8%,-10%) scale(1.3) rotate(-12deg);opacity:1}100%{transform:translate(-230%,70%) scale(.9) rotate(-35deg);opacity:.95}}
 #pc{position:absolute;left:8%;bottom:4%;height:38%;image-rendering:pixelated;filter:drop-shadow(0 4px 3px rgba(0,0,0,.4))}
 .info{position:absolute;background:var(--cream);color:var(--ink);border:3px solid var(--ink);border-radius:6px;
   padding:5px 8px;width:42%;font-size:clamp(10px,2.3vw,15px);box-shadow:3px 3px 0 rgba(0,0,0,.35)}
